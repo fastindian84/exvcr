@@ -13,8 +13,14 @@ defmodule ExVCR.Util do
   @doc """
   Takes a keyword lists and returns them as strings.
   """
+  def stringify_keys(list), do: stringify_keys(list, [])
+  def stringify_keys([], acc), do: acc
+  def stringify_keys([head | tail], acc) do
+    {key, value} = case is_map(head) do
+      false -> head
+      true -> head |> Map.to_list() |> hd
+    end
 
-  def stringify_keys(list) do
-    list |> Enum.map(fn {key, value} -> {to_string(key), to_string(value)} end)
+    stringify_keys(tail, [{to_string(key), to_string(value)} | acc])
   end
 end

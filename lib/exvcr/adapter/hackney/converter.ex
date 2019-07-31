@@ -10,11 +10,15 @@ defmodule ExVCR.Adapter.Hackney.Converter do
     response = struct(ExVCR.Response, response)
 
     response =
-      if is_map(response.headers) do
-        headers = response.headers |> Map.to_list
-        %{response | headers: headers}
-      else
-        response
+      cond do
+        is_map(response.headers) ->
+          headers = response.headers |> Map.to_list
+          %{response | headers: headers}
+        is_list(response.headers) ->
+          headers = response.headers |> Enum.flat_map(fn(e) -> Map.to_list(e)  end)
+
+          %{response | headers: headers}
+        true -> response
       end
 
     response

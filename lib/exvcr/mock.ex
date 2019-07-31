@@ -33,14 +33,15 @@ defmodule ExVCR.Mock do
       stub = prepare_stub_record(unquote(options), adapter_method())
       recorder = Recorder.start([fixture: stub_fixture, stub: stub, adapter: adapter_method()])
 
+      mock_methods(recorder, adapter_method())
+
       try do
-        mock_methods(recorder, adapter_method())
         [do: return_value] = unquote(test)
         return_value
       after
-        module_name = adapter_method().module_name
-        :meck.unload(module_name)
-        ExVCR.MockLock.release_lock()
+        if options_method()[:clear_mock] || unquote(options)[:clear_mock] do
+          :meck.unload(adapter_method().module_name)
+        end
       end
     end
   end
@@ -60,19 +61,16 @@ defmodule ExVCR.Mock do
       recorder = Recorder.start(
         unquote(options) ++ [fixture: normalize_fixture(unquote(fixture)), adapter: adapter_method()])
 
+      mock_methods(recorder, adapter_method())
 
       try do
-        mock_methods(recorder, adapter_method())
         [do: return_value] = unquote(test)
         return_value
       after
-        recorder_result = Recorder.save(recorder)
-
-        module_name = adapter_method().module_name
-        :meck.unload(module_name)
-        ExVCR.MockLock.release_lock()
-
-        recorder_result
+        if options_method()[:clear_mock] || unquote(options)[:clear_mock] do
+          :meck.unload(adapter_method().module_name)
+        end
+        Recorder.save(recorder)
       end
     end
   end
@@ -86,6 +84,14 @@ defmodule ExVCR.Mock do
     end
   end
 
+  defmacro with_cassette(name, request, opts \\ []) do
+    quote do
+      use_cassette "#{(__MODULE__)}##{unquote(name)}", match_requests_on: [:headers, :cookie, :query, :request_body, :method] do
+        unquote(request)
+      end
+    end
+  end
+
   @doc """
   Mock methods pre-defined for the specified adapter.
   """
@@ -93,18 +99,9 @@ defmodule ExVCR.Mock do
     target_methods = adapter.target_methods(recorder)
     module_name    = adapter.module_name
 
-    parent_pid = self()
-    Task.async(fn ->
-      ExVCR.MockLock.ensure_started
-      ExVCR.MockLock.request_lock(self(), parent_pid)
-      receive do
-        :lock_granted ->
-          Enum.each(target_methods, fn({function, callback}) ->
-            :meck.expect(module_name, function, callback)
-          end)
-      end
+    Enum.each(target_methods, fn({function, callback}) ->
+      :meck.expect(module_name, function, callback)
     end)
-    |> Task.await(:infinity)
   end
 
   @doc """
@@ -130,6 +127,6 @@ defmodule ExVCR.Mock do
   Normalize fixture name for using as json file names, which removes whitespaces and align case.
   """
   def normalize_fixture(fixture) do
-    fixture |> String.replace(~r/\s/, "_") |> String.downcase
+    fixture |> String.replace(~r/\s/, "_") |> String.replace("Elixir.", "")
   end
 end

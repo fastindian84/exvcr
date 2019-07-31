@@ -42,12 +42,16 @@ defmodule ExVCR.Converter do
       defoverridable [parse_headers: 1]
 
       def do_parse_headers([], acc) do
-        Enum.reverse(acc) |> Enum.uniq_by(fn({key,value}) -> key end)
+        Enum.reverse(acc)
       end
-      def do_parse_headers([{key,value}|tail], acc) do
+      def do_parse_headers([header|tail], acc) do
+        {key,value} = case is_map(header) do
+          true -> header |> Enum.to_list |> hd
+          false -> header
+        end
         replaced_value = to_string(value) |> ExVCR.Filter.filter_sensitive_data
         replaced_value = ExVCR.Filter.filter_request_header(to_string(key), to_string(replaced_value))
-        do_parse_headers(tail, [{to_string(key), replaced_value}|acc])
+        do_parse_headers(tail, [%{to_string(key) => replaced_value}|acc])
       end
       defoverridable [do_parse_headers: 2]
 
@@ -57,7 +61,7 @@ defmodule ExVCR.Converter do
       defoverridable [parse_options: 1]
 
       def do_parse_options([], acc) do
-        Enum.reverse(acc) |> Enum.uniq_by(fn({key,value}) -> key end)
+        Enum.reverse(acc) |> Enum.into(%{})
       end
       def do_parse_options([{key,value}|tail], acc) when is_function(value) do
         do_parse_options(tail, acc)

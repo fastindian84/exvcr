@@ -50,6 +50,7 @@ defmodule ExVCR.Recorder do
   """
   def save(recorder) do
     file_path = get_file_path(recorder)
+
     if File.exists?(file_path) == false do
       ExVCR.JSON.save(file_path, ExVCR.Recorder.get(recorder))
     end
@@ -64,7 +65,10 @@ defmodule ExVCR.Recorder do
       true  -> ExVCR.Setting.get(:custom_library_dir)
       _     -> ExVCR.Setting.get(:cassette_library_dir)
     end
-    "#{directory}/#{opts[:fixture]}.json"
+
+    path = String.replace(opts[:fixture], ~r/(\.|#)/, "/")
+
+    "#{directory}/#{path}.json"
   end
 
   def options(recorder),                 do: Options.get(recorder.options)

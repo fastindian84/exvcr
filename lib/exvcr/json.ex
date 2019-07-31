@@ -23,12 +23,33 @@ defmodule ExVCR.JSON do
     case String.valid?(response.body) do
       true -> recording
       false ->
-        body = response.body
-        |> :erlang.term_to_binary()
-        |> Base.encode64()
-        %{ recording | response: %{ response | body: body, binary: true } }
+        case gzipped?(response) do
+          true ->
+            unzipped = response.body
+                       |> :zlib.gunzip()
+
+            headers = Enum.reject(response.headers, &zip_header?/1)
+
+            %{recording | response: %{response | body: unzipped, headers: headers}}
+          false ->
+
+
+            body = response.body
+                   |> :erlang.term_to_binary()
+                   |> Base.encode64()
+
+            %{ recording | response: %{ response | body: body, binary: true } }
+        end
     end
   end
+
+  def gzipped?(response) do
+    Enum.any?(response.headers, &zip_header?/1)
+  end
+
+  defp zip_header?(%{"Content-Encoding" => "gzip"}), do: true
+  defp zip_header?(%{"Content-Encoding" => "x-gzip"}), do: true
+  defp zip_header?(_), do: false
 
   @doc """
   Loads the JSON files based on the fixture name and options.

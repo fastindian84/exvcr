@@ -29,8 +29,7 @@ defmodule ExVCR.Adapter.Hackney do
   """
   def target_methods(recorder) do
     [ {:request, &ExVCR.Recorder.request(recorder, [&1,&2,&3,&4,&5])},
-      {:body,    &handle_body_request(recorder, [&1])},
-      {:body,    &handle_body_request(recorder, [&1,&2])} ]
+      {:body,    &handle_body_request(recorder, [&1])} ]
   end
 
   @doc """
@@ -41,8 +40,9 @@ defmodule ExVCR.Adapter.Hackney do
     method = Enum.fetch!(request, 0)
     request_body = Enum.fetch(request, 3) |> parse_request_body
     headers = Enum.fetch!(request, 2) |> Util.stringify_keys
+    options = Enum.fetch!(request, 4)
 
-    [url: url, method: method, request_body: request_body, headers: headers]
+    [url: url, method: method, request_body: request_body, headers: headers, options: options]
   end
 
   @doc """
@@ -84,16 +84,12 @@ defmodule ExVCR.Adapter.Hackney do
   end
 
   defp handle_body_request(recorder, [client]) do
-    handle_body_request(recorder, [client, :infinity])
-  end
-
-  defp handle_body_request(recorder, [client, max_length]) do
     client_key_atom = client |> inspect |> String.to_atom
     if body = Store.get(client_key_atom) do
       Store.delete(client_key_atom)
       {:ok, body}
     else
-      case :meck.passthrough([client, max_length]) do
+      case :meck.passthrough([client]) do
         {:ok, body} ->
           body = ExVCR.Filter.filter_sensitive_data(body)
 
@@ -121,9 +117,20 @@ defmodule ExVCR.Adapter.Hackney do
       {:error, response.body}
     else
       case response.body do
-        nil -> {:ok, response.status_code, response.headers}
-        _   -> {:ok, response.status_code, response.headers, response.body}
+        nil -> {:ok, response.status_code, headers_to_keyword_list(response.headers)}
+        _   -> {:ok, response.status_code, headers_to_keyword_list(response.headers), response.body}
       end
+    end
+  end
+
+  defp headers_to_keyword_list([], acc), do: Enum.reverse(acc)
+  defp headers_to_keyword_list([head | tail], acc \\ []) do
+    case is_map(head) do
+      true ->
+        header = Map.to_list(head) |> hd
+        headers_to_keyword_list(tail, [header | acc])
+      false ->
+        headers_to_keyword_list(tail, [head | acc])
     end
   end
 

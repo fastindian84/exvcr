@@ -11,11 +11,7 @@ defmodule ExVCR.Handler do
   Get response from either server or cache.
   """
   def get_response(recorder, request) do
-    if ignore_request?(request, recorder) do
-      get_response_from_server(request, recorder, false)
-    else
-      get_response_from_cache(request, recorder) || get_response_from_server(request, recorder, true)
-    end
+    get_response_from_cache(request, recorder) || get_response_from_server(request, recorder)
   end
 
   @doc """
@@ -25,7 +21,9 @@ defmodule ExVCR.Handler do
     recorder_options = Options.get(recorder.options)
     adapter = ExVCR.Recorder.options(recorder)[:adapter]
     params = adapter.generate_keys_for_request(request)
+
     {response, responses} = find_response(Recorder.get(recorder), params, recorder_options)
+
     response = adapter.hook_response_from_cache(request, response)
 
     case { response, stub_mode?(recorder_options) } do
@@ -69,10 +67,15 @@ defmodule ExVCR.Handler do
   end
 
   defp match_response(response, keys, recorder_options) do
-    match_by_url(response, keys, recorder_options)
-      and match_by_method(response, keys)
-      and match_by_request_body(response, keys, recorder_options)
-      and match_by_headers(response, keys, recorder_options)
+    match_by_url          = match_by_url(response, keys, recorder_options)
+    match_by_method       = match_by_method(response, keys)
+    match_by_request_body = match_by_request_body(response, keys, recorder_options)
+    match_by_headers      = match_by_headers(response, keys, recorder_options)
+    match_by_cookie       = match_by_cookie(response, keys, recorder_options)
+
+    assertions = [match_by_url, match_by_method, match_by_request_body, match_by_headers, match_by_cookie]
+
+    Enum.all?(assertions)
   end
 
   defp match_by_url(response, keys, recorder_options) do
@@ -100,6 +103,18 @@ defmodule ExVCR.Handler do
       |> Enum.to_list
       |> Util.stringify_keys
       |> Keyword.equal?(keys[:headers])
+    else
+      true
+    end
+  end
+
+  def match_by_cookie(response, keys, options) do
+    if has_match_requests_on(:cookie, options) do
+      options = response[:request].options
+
+      request_cookie = Map.get(response[:request].options, "cookie", [])
+
+      keys[:options][:cookie] == request_cookie
     else
       true
     end
@@ -137,41 +152,44 @@ defmodule ExVCR.Handler do
     end
   end
 
-  defp get_response_from_server(request, recorder, record?) do
+  def get_response_from_server(request, recorder) do
+    raise_error_if_cassette_already_exists(recorder, inspect(request))
     adapter = ExVCR.Recorder.options(recorder)[:adapter]
     response = :meck.passthrough(request)
                |> adapter.hook_response_from_server
-    if record? do
-      raise_error_if_cassette_already_exists(recorder, inspect(request))
-      Recorder.append(recorder, adapter.convert_to_string(request, response))
-      ExVCR.Checker.add_server_count(recorder)
-    end
+
+    Recorder.append(recorder, adapter.convert_to_string(request, response_with_headers_map(response)))
+
+    ExVCR.Checker.add_server_count(recorder)
+
     response
   end
 
-  defp ignore_request?(request, recorder) do
-    ignore_localhost = ExVCR.Recorder.options(recorder)[:ignore_localhost] || ExVCR.Setting.get(:ignore_localhost)
-    if ignore_localhost do
-      adapter = ExVCR.Recorder.options(recorder)[:adapter]
-      params = adapter.generate_keys_for_request(request)
+  def response_with_headers_map(response) do
+    { val, status, headers, ref } = response
 
-      url = to_string(params[:url])
-      Regex.match?(~r[https?://localhost], url)
-    else
-      false
-    end
+    headers_maps = headers
+                   |> Enum.map(fn({key, value}) -> %{key => value} end)
+
+    {:ok, status, headers_maps, ref}
   end
 
   defp raise_error_if_cassette_already_exists(recorder, request_description) do
     file_path = ExVCR.Recorder.get_file_path(recorder)
-    if File.exists?(file_path) do
-      message = """
-      Request did not match with any one in the current cassette: #{file_path}.
-      Delete the current cassette with [mix vcr.delete] and re-record.
 
-      Request: #{request_description}
-      """
-      raise ExVCR.RequestNotMatchError, message: message
+    cond do
+      System.get_env("VCR") ->
+        File.rm(file_path)
+      File.exists?(file_path) ->
+        message = """
+        Request did not match with any one in the current cassette: #{file_path}.
+        Delete the current cassette with [mix vcr.delete] and re-record.
+
+        Request: #{request_description}
+        """
+        raise ExVCR.RequestNotMatchError, message: message
+      true ->
+        :ok
     end
   end
 end
