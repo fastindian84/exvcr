@@ -42,6 +42,7 @@ defmodule ExVCR.Recorder do
     custom_mode = options(recorder)[:custom]
     adapter     = options(recorder)[:adapter]
     responses   = ExVCR.JSON.load(file_path, custom_mode, adapter)
+
     set(responses, recorder)
   end
 

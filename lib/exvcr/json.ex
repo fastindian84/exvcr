@@ -18,7 +18,6 @@ defmodule ExVCR.JSON do
   end
 
   defp encode_binary_data(%{request: _, response: %ExVCR.Response{body: nil}} = recording), do: recording
-
   defp encode_binary_data(%{response: response} = recording) do
     case String.valid?(response.body) do
       true -> recording
@@ -32,10 +31,7 @@ defmodule ExVCR.JSON do
 
             %{recording | response: %{response | body: unzipped, headers: headers}}
           false ->
-
-
             body = response.body
-                   |> :erlang.term_to_binary()
                    |> Base.encode64()
 
             %{ recording | response: %{ response | body: body, binary: true } }
@@ -75,8 +71,8 @@ defmodule ExVCR.JSON do
 
   defp load_binary_data(%{"response" => %{"body" => body, "binary" => true} = response} = recording) do
     body = body
-    |> Base.decode64!()
-    |> :erlang.binary_to_term()
+           |> Base.decode64!()
+
     %{ recording | "response" => %{ response | "body" => body } }
   end
 

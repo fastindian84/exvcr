@@ -11,7 +11,7 @@ defmodule ExVCR.Handler do
   Get response from either server or cache.
   """
   def get_response(recorder, request) do
-    get_response_from_cache(request, recorder) || get_response_from_server(request, recorder)
+    get_response_from_cache(request, recorder)  || get_response_from_server(request, recorder)
   end
 
   @doc """
@@ -35,6 +35,7 @@ defmodule ExVCR.Handler do
       { response, _ } ->
         ExVCR.Checker.add_cache_count(recorder)
         Recorder.set(responses, recorder)
+
         adapter.get_response_value_from_cache(response)
     end
   end
@@ -114,7 +115,7 @@ defmodule ExVCR.Handler do
 
       request_cookie = Map.get(response[:request].options, "cookie", [])
 
-      keys[:options][:cookie] == request_cookie
+      (keys[:options][:cookie] || []) == request_cookie
     else
       true
     end
