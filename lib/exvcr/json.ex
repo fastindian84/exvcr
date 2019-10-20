@@ -52,6 +52,13 @@ defmodule ExVCR.JSON do
   For options, this method just refers to the :custom attribute is set or not.
   """
   def load(file_name, custom_mode, adapter) do
+    if System.get_env("VCR") do
+      IO.inspect("""
+        Removing: #{file_name}
+       """)
+      File.rm(file_name)
+    end
+
     case { File.exists?(file_name), custom_mode } do
       { true, _ } -> read_json_file(file_name) |> Enum.map(&adapter.convert_from_string/1)
       { false, true } -> raise ExVCR.FileNotFoundError, message: "cassette file \"#{file_name}\" not found"
