@@ -1,0 +1,29 @@
+[
+  {
+    "request": {
+      "body": "",
+      "headers": [],
+      "method": "get",
+      "options": {},
+      "request_body": "",
+      "url": "http://localhost:34002/server?password=sample"
+    },
+    "response": {
+      "binary": false,
+      "body": "test_response",
+      "headers": [
+        {
+          "server": "Cowboy"
+        },
+        {
+          "date": "Thu, 19 Aug 2021 18:31:41 GMT"
+        },
+        {
+          "content-length": "13"
+        }
+      ],
+      "status_code": 200,
+      "type": "ok"
+    }
+  }
+]

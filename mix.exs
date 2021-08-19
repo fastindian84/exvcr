@@ -15,16 +15,16 @@ defmodule ExVCR.Mixfile do
 
   # Configuration for the OTP application
   def application do
-    [applications: [:meck, :exactor, :exjsx]]
+    [applications: [:meck, :exactor]]
   end
 
   # Returns the list of dependencies in the format:
   # { :foobar, "~> 0.1", git: "https://github.com/elixir-lang/foobar.git" }
   def deps do
     [
-      {:meck, "~> 0.8"},
+      {:meck, "~> 0.9.2"},
       {:exactor, "~> 2.2"},
-      {:exjsx, "~> 4.0"},
+      {:jason, "~> 1.2"},
       {:ibrowse, "~> 4.4", optional: true},
       {:httpotion, "~> 3.1", optional: true},
       {:httpoison, "~> 1.0", optional: true},

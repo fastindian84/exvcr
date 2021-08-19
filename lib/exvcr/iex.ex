@@ -31,8 +31,8 @@ defmodule ExVCR.IEx do
             unquote(test)
           after
             Recorder.get(recorder)
-            |> JSX.encode!
-            |> JSX.prettify!
+            |> Jason.encode!
+            |> Jason.Formatter.pretty_print
             |> IO.puts
           end
           :ok

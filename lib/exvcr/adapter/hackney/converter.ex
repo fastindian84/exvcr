@@ -52,7 +52,7 @@ defmodule ExVCR.Adapter.Hackney.Converter do
     body = case body_or_client do
       string when is_binary(string) -> string
       # Client is already replaced by body through ExVCR.Adapter.Hackney adapter.
-      ref when is_reference(ref) -> ref
+      ref when is_reference(ref) ->
         state = :hackney_manager.get_state(ref)
         {:ok, body, _} = :hackney_response.body(:infinity, state)
 

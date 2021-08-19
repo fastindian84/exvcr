@@ -130,8 +130,9 @@ defmodule ExVCR.Adapter.Hackney do
     end
   end
 
+  defp headers_to_keyword_list(headers), do: headers_to_keyword_list(headers, [])
   defp headers_to_keyword_list([], acc), do: Enum.reverse(acc)
-  defp headers_to_keyword_list([head | tail], acc \\ []) do
+  defp headers_to_keyword_list([head | tail], acc) do
     case is_map(head) do
       true ->
         header = Map.to_list(head) |> hd

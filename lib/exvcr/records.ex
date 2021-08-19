@@ -3,10 +3,12 @@ defmodule ExVCR.Record do
 end
 
 defmodule ExVCR.Request do
+  @derive Jason.Encoder
   defstruct url: nil, headers: [], method: nil, body: nil, options: [], request_body: ""
 end
 
 defmodule ExVCR.Response do
+  @derive Jason.Encoder
   defstruct type: "ok", status_code: nil, headers: [], body: nil, binary: false
 end
 

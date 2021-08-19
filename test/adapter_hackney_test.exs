@@ -35,6 +35,7 @@ defmodule ExVCR.Adapter.HackneyTest do
       assert List.keyfind(headers, "Content-Type", 0) == {"Content-Type", "text/html"}
 
       assert List.keyfind(headers, "Content-Encoding", 0) == {"Content-Encoding", "gzip"}
+
       decoded_body = :zlib.gunzip(body)
       assert decoded_body =~ ~r/Example Domain/
     end
